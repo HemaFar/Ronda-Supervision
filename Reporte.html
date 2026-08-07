@@ -35,13 +35,22 @@
   .pad{padding:0 16px;}
 
   /* Info grid */
-  .info{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px;}
+  .info{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; align-items:start;}
   .info .full{grid-column:1 / -1;}
   .field label{display:block; font-size:10.5px; font-weight:700; letter-spacing:.6px;
     color:var(--grey); text-transform:uppercase; margin-bottom:3px;}
   .field input, .field textarea, .field select{
     width:100%; border:1px solid var(--line); border-radius:8px; padding:9px 10px;
     font-size:15px; background:#fff; color:var(--dark); font-family:inherit;
+    -webkit-appearance:none; appearance:none; box-sizing:border-box;
+  }
+  /* Altura uniforme en la cabecera (evita que fecha/hora/turno se monten en iOS) */
+  .info .field input, .info .field select{
+    height:46px; line-height:1.2; -webkit-appearance:none; appearance:none;
+  }
+  .info .field select{
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%236B7280' stroke-width='1.6'/></svg>");
+    background-repeat:no-repeat; background-position:right 12px center; padding-right:30px;
   }
   .field input:focus, .field textarea:focus, .field select:focus{
     outline:2px solid var(--teal); outline-offset:0; border-color:var(--teal);
@@ -337,24 +346,46 @@ function descargar(){
 async function generarPDF(){
   fijarValores();
   const { jsPDF } = window.jspdf;
-  const target = document.querySelector('.wrap');
-  // Renderiza el contenido a imagen de alta resolución
-  const canvas = await html2canvas(target, {scale:2, backgroundColor:'#F5F7FA', useCORS:true});
-  const imgData = canvas.toDataURL('image/jpeg', 0.92);
   const pdf = new jsPDF('p','mm','a4');
   const pw = pdf.internal.pageSize.getWidth();
   const ph = pdf.internal.pageSize.getHeight();
-  const imgW = pw;
-  const imgH = canvas.height * pw / canvas.width;
-  let heightLeft = imgH;
-  let pos = 0;
-  pdf.addImage(imgData, 'JPEG', 0, pos, imgW, imgH);
-  heightLeft -= ph;
-  while(heightLeft > 0){
-    pos -= ph;
-    pdf.addPage();
-    pdf.addImage(imgData, 'JPEG', 0, pos, imgW, imgH);
-    heightLeft -= ph;
+  const margin = 8;              // margen en mm
+  const usableW = pw - margin*2;
+  const usableH = ph - margin*2;
+  let cursorY = margin;
+
+  // Lista de bloques que NO deben partirse: header, info, instrucciones, cada área, notas
+  const wrap = document.querySelector('.wrap');
+  const blocks = [];
+  blocks.push(wrap.querySelector('header'));
+  blocks.push(wrap.querySelector('.pad > .info'));
+  blocks.push(wrap.querySelector('.note'));
+  wrap.querySelectorAll('section.area').forEach(a=>blocks.push(a));
+  const band = wrap.querySelector('.band');
+  const bandBody = wrap.querySelector('.band-body');
+  if(band) blocks.push(band);
+  if(bandBody) blocks.push(bandBody);
+
+  for(const el of blocks){
+    if(!el) continue;
+    const canvas = await html2canvas(el, {scale:2, backgroundColor:'#ffffff', useCORS:true});
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    let w = usableW;
+    let h = canvas.height * w / canvas.width;
+    // Si un bloque es más alto que una página entera, lo escalamos para que quepa
+    if(h > usableH){
+      const scale = usableH / h;
+      h = usableH;
+      w = w * scale;
+    }
+    // ¿Cabe en lo que queda de la página? si no, nueva página
+    if(cursorY + h > ph - margin){
+      pdf.addPage();
+      cursorY = margin;
+    }
+    const x = margin + (usableW - w)/2;
+    pdf.addImage(imgData, 'JPEG', x, cursorY, w, h);
+    cursorY += h + 3;   // pequeño espacio entre bloques
   }
   return pdf;
 }
