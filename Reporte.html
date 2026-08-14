@@ -170,7 +170,7 @@
 
     <div class="band">Notas Generales y Sistemas</div>
     <div class="band-body">
-      <p class="sublabel">Estado de los sistemas informáticos (ej. GreenCube)</p>
+      <p class="sublabel">Observaciones generales</p>
       <div class="field"><textarea id="sistemas" rows="2" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-family:inherit;font-size:14px;"></textarea></div>
       <p class="sublabel" style="margin-top:12px;">Observaciones de seguridad general</p>
       <div class="field"><textarea id="seguridad" rows="2" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-family:inherit;font-size:14px;"></textarea></div>
@@ -194,8 +194,10 @@ const AREAS = [
   ["Atención Primaria", true],
   ["Consulta Externa", true],
   ["Endoscopía", true],
-  ["UCI Adultos y UCI Pediátrica", true],
-  ["Neonatal y UCI Neonatal", true],
+  ["UCI Adultos", true],
+  ["UCI Pediátrica", true],
+  ["Neonatal", true],
+  ["UCI Neonatal", true],
   ["Cirugía y Esterilización", true],
   ["Hospitalización", true],
   ["Laboratorio", false],
@@ -204,20 +206,30 @@ const AREAS = [
   ["Servicio Farmacéutico", false],
   ["Exterior Trasero y Zonas de Descarga", false],
 ];
-const CHECKS = [
+const CHECKS_BASE = [
   "Área limpia y ordenada",
-  "Personal completo en su puesto",
+  "Personal de labor en el área",
   "Equipos funcionando correctamente",
   "Presencia de personal de seguridad",
 ];
+const CHECK_SISTEMAS = "Sistemas informáticos funcionando correctamente";
+// Áreas SIN el punto de sistemas (por número, base 1): Exterior frontal, Morgue, Lavandería/Cocina, Exterior trasero
+const SIN_SISTEMAS = [1, 16, 17, 19];
+// Devuelve la lista de checks para un área (índice base 0)
+function checksDe(ai){
+  const num = ai + 1;
+  if (SIN_SISTEMAS.includes(num)) return CHECKS_BASE;
+  return [...CHECKS_BASE, CHECK_SISTEMAS];
+}
 const OPTS = ["Sí","No","N/A"];
 
-// estado
-const state = AREAS.map(() => ({checks:[null,null,null,null], metrics:{}, obs:"", alert:""}));
+// estado (cada área con tantos checks como le correspondan)
+const state = AREAS.map((a, ai) => ({checks: checksDe(ai).map(()=>null), metrics:{}, obs:"", alert:""}));
 
 const cont = document.getElementById("areas");
 AREAS.forEach((a, ai) => {
   const [title, hasMetrics] = a;
+  const CHECKS = checksDe(ai);
   const sec = document.createElement("section");
   sec.className = "area";
 
@@ -291,7 +303,7 @@ function construirTexto(){
       const parts = Object.entries(s.metrics).filter(([k,v]) => v !== "" && v != null).map(([k,v]) => `${k}: ${v}`);
       if(parts.length) L.push("   " + parts.join("  |  "));
     }
-    CHECKS.forEach((cText, ci) => {
+    checksDe(ai).forEach((cText, ci) => {
       const v = s.checks[ci] || "—";
       L.push(`   [${v}] ${cText}`);
     });
@@ -303,7 +315,7 @@ function construirTexto(){
   L.push("=".repeat(40));
   L.push("");
   L.push("NOTAS GENERALES Y SISTEMAS");
-  if(val("sistemas")) L.push("Sistemas informáticos: " + val("sistemas"));
+  if(val("sistemas")) L.push("Observaciones generales: " + val("sistemas"));
   if(val("seguridad")) L.push("Seguridad general: " + val("seguridad"));
   return L.join("\n");
 }
