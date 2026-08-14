@@ -188,18 +188,18 @@
 const AREAS = [
   ["Exterior Frontal y Parqueo", false],
   ["Recepción y Admisión", false],
-  ["Toma de Muestra", "muestra"],
+  ["Toma de Muestra", "imagenes"],
   ["Triaje y Emergencia", true],
-  ["Imágenes", false],
-  ["Atención Primaria", true],
-  ["Consulta Externa", true],
-  ["Endoscopía", true],
-  ["UCI Adultos", true],
-  ["UCI Pediátrica", true],
-  ["Neonatal", true],
-  ["UCI Neonatal", true],
-  ["Cirugía y Esterilización", true],
-  ["Hospitalización", true],
+  ["Imágenes", "imagenes"],
+  ["Atención Primaria", "imagenes"],
+  ["Consulta Externa", "imagenes"],
+  ["Endoscopía", "imagenes"],
+  ["UCI Adultos", "internacion"],
+  ["UCI Pediátrica", "internacion"],
+  ["Neonatal", "internacion"],
+  ["UCI Neonatal", "internacion"],
+  ["Cirugía y Esterilización", "cirugia"],
+  ["Hospitalización", "internacion"],
   ["Laboratorio", false],
   ["Morgue", false],
   ["Lavandería y Cocina", false],
@@ -237,6 +237,14 @@ AREAS.forEach((a, ai) => {
   if (hasMetrics){
     const ms = (hasMetrics === "muestra")
       ? ["Atendidos","Pendientes"]
+      : (hasMetrics === "imagenes")
+      ? ["Pacientes atendidos","Pacientes en espera"]
+      : (hasMetrics === "simple")
+      ? ["Pacientes","Atendidos"]
+      : (hasMetrics === "internacion")
+      ? ["Pacientes","Altas","Ingresos"]
+      : (hasMetrics === "cirugia")
+      ? ["Pacientes","Altas","Ingresos","Cirugías en proceso"]
       : ["Pacientes","Atendidos","Altas","Ingresos"];
     metricsHTML = `<div class="metrics">` + ms.map(m =>
       `<div class="metric"><span>${m}:</span><input inputmode="numeric" data-ai="${ai}" data-m="${m}" oninput="setMetric(${ai},'${m}',this.value)"></div>`
