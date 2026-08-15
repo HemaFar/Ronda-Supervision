@@ -175,6 +175,11 @@
       <p class="sublabel" style="margin-top:12px;">Observaciones de seguridad general</p>
       <div class="field"><textarea id="seguridad" rows="2" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-family:inherit;font-size:14px;"></textarea></div>
     </div>
+
+    <div class="band" style="margin-top:20px;">Informe final de la ronda</div>
+    <div class="band-body" id="resumen">
+      <p style="font-size:13px; color:var(--grey); margin:0;">Se genera automáticamente con lo que registres arriba. Aparecerá aquí y en el PDF.</p>
+    </div>
   </div>
 </div>
 
@@ -335,7 +340,97 @@ function nombreArchivo(ext){
 }
 
 // Fija en el DOM los valores actuales (para copia HTML o render a PDF)
+// Calcula y dibuja el informe final con los datos registrados
+function renderResumen(){
+  let si=0, no=0, na=0;
+  const alertas=[];
+  const pac=[];
+  let totAtendidos=0, totEspera=0, totIngresos=0, totAltas=0;
+
+  AREAS.forEach((a, ai)=>{
+    const [title] = a;
+    const s = state[ai];
+    // conteo de checks
+    s.checks.forEach(v=>{ if(v==='Sí')si++; else if(v==='No')no++; else if(v==='N/A')na++; });
+    // alertas
+    if(s.alert && s.alert.trim()) alertas.push(title);
+    // pacientes
+    const m = s.metrics || {};
+    const num = k => { const n = parseInt(m[k],10); return isNaN(n)?0:n; };
+    if(m['Atendidos']!=null) totAtendidos += num('Atendidos');
+    if(m['Pacientes atendidos']!=null) totAtendidos += num('Pacientes atendidos');
+    if(m['Pacientes en espera']!=null) totEspera += num('Pacientes en espera');
+    if(m['En espera']!=null) totEspera += num('En espera');
+    if(m['Pendientes']!=null) totEspera += num('Pendientes');
+    if(m['Ingresos']!=null) totIngresos += num('Ingresos');
+    if(m['Altas']!=null) totAltas += num('Altas');
+    // detalle por área (solo si tiene algún dato)
+    const partes = Object.entries(m).filter(([k,v])=>v!=null && String(v).trim()!=='');
+    if(partes.length){
+      pac.push({title, txt: partes.map(([k,v])=>`${k}: ${v}`).join(' · ')});
+    }
+  });
+
+  const total = si+no+na;
+  const pSi = total? Math.round(si/total*100):0;
+  const wSi = total? (si/total*100):0;
+  const wNo = total? (no/total*100):0;
+  const wNa = total? (na/total*100):0;
+
+  const fecha = (document.getElementById('fecha')||{}).value||'';
+  const turno = (document.getElementById('turno')||{}).value||'';
+  const meta = [fecha?('Fecha '+fecha):'', turno?('Turno '+turno):'', AREAS.length+' áreas'].filter(Boolean).join(' · ');
+
+  let html = '';
+  html += `<p style="font-size:12px;color:var(--grey);margin:0 0 14px;">${meta}</p>`;
+
+  // Alertas
+  if(alertas.length){
+    html += `<div style="background:#FBEAE8;border-left:3px solid #C0392B;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:16px;">`;
+    html += `<p style="font-size:12.5px;color:#A32D2D;margin:0 0 6px;font-weight:700;">⚠ Alertas críticas — ${alertas.length} área(s)</p>`;
+    alertas.forEach(t=> html += `<p style="font-size:13px;margin:3px 0;color:#501313;">${t}</p>`);
+    html += `</div>`;
+  } else {
+    html += `<div style="background:#E1F5EE;border-left:3px solid #1D9E75;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:16px;"><p style="font-size:13px;margin:0;color:#0F6E56;">Sin alertas críticas registradas.</p></div>`;
+  }
+
+  // Estado general
+  html += `<p style="font-size:12.5px;color:var(--grey);margin:0 0 8px;font-weight:700;">ESTADO GENERAL DE LOS PUNTOS</p>`;
+  html += `<div style="display:flex;gap:14px;margin-bottom:8px;font-size:12px;color:#4A5568;flex-wrap:wrap;">
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#2C7A7B;"></span>Sí ${si}</span>
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#C0392B;"></span>No ${no}</span>
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#6B7280;"></span>N/A ${na}</span>
+  </div>`;
+  html += `<div style="display:flex;height:24px;border-radius:6px;overflow:hidden;background:#EEF3F8;">
+    <div style="width:${wSi}%;background:#2C7A7B;"></div>
+    <div style="width:${wNo}%;background:#C0392B;"></div>
+    <div style="width:${wNa}%;background:#6B7280;"></div>
+  </div>`;
+  html += `<p style="font-size:11.5px;color:var(--grey);margin:7px 0 0;">${pSi}% conformes · ${total} puntos revisados</p>`;
+
+  // Pacientes
+  html += `<div style="height:1px;background:var(--line);margin:16px 0;"></div>`;
+  html += `<p style="font-size:12.5px;color:var(--grey);margin:0 0 10px;font-weight:700;">PACIENTES</p>`;
+  html += `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px;">
+    ${[['Total atendidos',totAtendidos],['En espera',totEspera],['Ingresos',totIngresos],['Altas',totAltas]].map(([l,v])=>
+      `<div style="background:#EEF3F8;border-radius:8px;padding:0.6rem 0.8rem;"><p style="font-size:11.5px;color:#4A5568;margin:0 0 3px;">${l}</p><p style="font-size:22px;font-weight:700;margin:0;color:#1F3A5F;">${v}</p></div>`
+    ).join('')}
+  </div>`;
+  if(pac.length){
+    pac.forEach((p,i)=>{
+      const bb = i<pac.length-1 ? 'border-bottom:0.5px solid var(--line);' : '';
+      html += `<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;${bb}"><span style="font-size:12.5px;">${p.title}</span><span style="font-size:12px;color:var(--grey);text-align:right;">${p.txt}</span></div>`;
+    });
+  } else {
+    html += `<p style="font-size:12.5px;color:var(--grey);margin:0;">Sin datos de pacientes registrados.</p>`;
+  }
+
+  const cont = document.getElementById('resumen');
+  if(cont) cont.innerHTML = html;
+}
+
 function fijarValores(){
+  renderResumen();
   document.querySelectorAll('input').forEach(el=>{
     if(el.value) el.setAttribute('value', el.value); else el.removeAttribute('value');
   });
@@ -381,10 +476,8 @@ async function generarPDF(){
   blocks.push(wrap.querySelector('.pad > .info'));
   blocks.push(wrap.querySelector('.note'));
   wrap.querySelectorAll('section.area').forEach(a=>blocks.push(a));
-  const band = wrap.querySelector('.band');
-  const bandBody = wrap.querySelector('.band-body');
-  if(band) blocks.push(band);
-  if(bandBody) blocks.push(bandBody);
+  // Bandas y sus cuerpos (Notas Generales, e Informe final), en orden de aparición
+  wrap.querySelectorAll('.band, .band-body').forEach(el=>blocks.push(el));
 
   for(const el of blocks){
     if(!el) continue;
