@@ -470,8 +470,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     height:46px; line-height:1.2; -webkit-appearance:none; appearance:none;
   }
   .info .field select{
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%236B7280' stroke-width='1.6'/></svg>");
-    background-repeat:no-repeat; background-position:right 12px center; padding-right:30px;
+    padding-right:30px;
+  }
+  /* Flechita del desplegable con un pseudo-elemento de texto
+     (sin imágenes ni gradientes, para no contaminar el canvas en Safari) */
+  .info .field{ position:relative; }
+  .info .field.sel::after{
+    content:"\25BE"; position:absolute; right:12px; top:38px;
+    color:#6B7280; pointer-events:none; font-size:12px;
   }
   .field input:focus, .field textarea:focus, .field select:focus{
     outline:2px solid var(--teal); outline-offset:0; border-color:var(--teal);
@@ -577,7 +583,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   <div class="pad">
     <div class="info">
       <div class="field"><label>Fecha</label><input type="date" id="fecha"></div>
-      <div class="field"><label>Turno</label>
+      <div class="field sel"><label>Turno</label>
         <select id="turno"><option value="">—</option><option>Mañana</option><option>Tarde</option><option>Noche</option></select>
       </div>
       <div class="field"><label>Hora de inicio</label><input type="time" id="hini"></div>
