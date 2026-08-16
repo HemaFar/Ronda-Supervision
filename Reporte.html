@@ -647,9 +647,16 @@ const CHECKS_BASE = [
 const CHECK_SISTEMAS = "Sistemas informáticos funcionando correctamente";
 // Áreas SIN el punto de sistemas (por número, base 1): Exterior frontal, Morgue, Lavandería/Cocina, Exterior trasero
 const SIN_SISTEMAS = [1, 16, 17, 19];
+// Áreas con checklist reducido (solo limpieza y seguridad): Exterior trasero (19)
+const CHECKS_REDUCIDO = [
+  "Área limpia y ordenada",
+  "Presencia de personal de seguridad",
+];
+const SOLO_LIMPIEZA_SEGURIDAD = [19];
 // Devuelve la lista de checks para un área (índice base 0)
 function checksDe(ai){
   const num = ai + 1;
+  if (SOLO_LIMPIEZA_SEGURIDAD.includes(num)) return CHECKS_REDUCIDO;
   if (SIN_SISTEMAS.includes(num)) return CHECKS_BASE;
   return [...CHECKS_BASE, CHECK_SISTEMAS];
 }
