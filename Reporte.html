@@ -887,6 +887,16 @@ function descargar(){
 // Genera el PDF del formulario lleno
 async function generarPDF(){
   fijarValores();
+  // Ensanchar temporalmente el contenedor a un ancho amplio (tipo escritorio)
+  // para que cada bloque se capture ancho y bajo -> caben varias áreas por página.
+  const wrapEl = document.querySelector('.wrap');
+  const _prevWidth = wrapEl.style.width;
+  const _prevMaxW  = wrapEl.style.maxWidth;
+  const _prevMargin = wrapEl.style.margin;
+  wrapEl.style.maxWidth = '820px';
+  wrapEl.style.width = '820px';
+  wrapEl.style.margin = '0 auto';
+
   // Sustituir cada textarea por un div temporal (los textarea no ajustan el
   // texto al capturarlos con html2canvas; un div sí respeta el salto de línea).
   const reemplazos = [];
@@ -910,11 +920,14 @@ async function generarPDF(){
   try{
     return await _construirPDF();
   } finally {
-    // Restaurar los textarea originales
+    // Restaurar los textarea y el ancho original
     reemplazos.forEach(({ta, div})=>{
       div.remove();
       ta.style.display = '';
     });
+    wrapEl.style.width = _prevWidth;
+    wrapEl.style.maxWidth = _prevMaxW;
+    wrapEl.style.margin = _prevMargin;
   }
 }
 
@@ -976,7 +989,7 @@ async function _construirPDF(){
         imageTimeout: 0,
         scrollX: 0,
         scrollY: 0,
-        windowWidth: document.documentElement.clientWidth
+        windowWidth: 900
       });
     }catch(err){
       if(scale > 1){ return await capturar(el, 1); } // reintento a escala 1
