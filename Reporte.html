@@ -897,10 +897,31 @@ async function generarPDF(){
                 (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
   const SCALE = isIOS ? 1.5 : 2;
 
-  // Lista de bloques que NO deben partirse: header, info, instrucciones, cada área, notas
+  // Dibujar la cabecera (banda azul + logo + títulos) directamente con jsPDF
+  // Esto evita que el logo base64 contamine el canvas en Safari iOS.
+  const headerH = 42;
+  pdf.setFillColor(31, 58, 95); // navy #1F3A5F
+  pdf.rect(0, 0, pw, headerH, 'F');
+  // Logo centrado (usamos la imagen base64 directamente en jsPDF)
+  try{
+    const logo = document.querySelector('header .logo-w');
+    if(logo && logo.src){
+      const lw = 44, lh = lw * (logo.naturalHeight||140) / (logo.naturalWidth||360);
+      pdf.addImage(logo.src, 'PNG', (pw-lw)/2, 6, lw, lh);
+    }
+  }catch(e){ /* si falla el logo, seguimos sin él */ }
+  pdf.setTextColor(255,255,255);
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(15);
+  pdf.text('Informe de Ronda de Supervisión', pw/2, 30, {align:'center'});
+  pdf.setFont('helvetica','normal'); pdf.setFontSize(9);
+  pdf.setTextColor(200,210,225);
+  pdf.text('Supervisión operativa hospitalaria · Registro de turno', pw/2, 37, {align:'center'});
+  pdf.setTextColor(0,0,0);
+  cursorY = headerH + 4;
+
+  // Lista de bloques a capturar (SIN el header, que ya dibujamos arriba)
   const wrap = document.querySelector('.wrap');
   const blocks = [];
-  blocks.push(wrap.querySelector('header'));
   blocks.push(wrap.querySelector('.pad > .info'));
   blocks.push(wrap.querySelector('.note'));
   wrap.querySelectorAll('section.area').forEach(a=>blocks.push(a));
@@ -915,7 +936,8 @@ async function generarPDF(){
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false,
-        allowTaint: true,
+        allowTaint: false,
+        imageTimeout: 0,
         scrollX: 0,
         scrollY: 0,
         windowWidth: document.documentElement.clientWidth
