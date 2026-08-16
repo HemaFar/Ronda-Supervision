@@ -887,8 +887,38 @@ function descargar(){
 // Genera el PDF del formulario lleno
 async function generarPDF(){
   fijarValores();
+  // Sustituir cada textarea por un div temporal (los textarea no ajustan el
+  // texto al capturarlos con html2canvas; un div sí respeta el salto de línea).
+  const reemplazos = [];
+  document.querySelectorAll('textarea').forEach(ta=>{
+    const div = document.createElement('div');
+    const cs = window.getComputedStyle(ta);
+    div.textContent = ta.value || '';
+    div.style.cssText =
+      'box-sizing:border-box;width:100%;'+
+      'border:'+cs.border+';border-radius:'+cs.borderRadius+';'+
+      'padding:'+cs.padding+';font-size:'+cs.fontSize+';'+
+      'font-family:'+cs.fontFamily+';line-height:1.4;background:#fff;'+
+      'min-height:'+cs.minHeight+';color:'+cs.color+';'+
+      'white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;';
+    ta.style.display = 'none';
+    ta.parentNode.insertBefore(div, ta);
+    reemplazos.push({ta, div});
+  });
   // esperar a que el navegador pinte los cambios antes de capturar (clave en Safari)
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  try{
+    return await _construirPDF();
+  } finally {
+    // Restaurar los textarea originales
+    reemplazos.forEach(({ta, div})=>{
+      div.remove();
+      ta.style.display = '';
+    });
+  }
+}
+
+async function _construirPDF(){
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF('p','mm','a4');
   const pw = pdf.internal.pageSize.getWidth();
